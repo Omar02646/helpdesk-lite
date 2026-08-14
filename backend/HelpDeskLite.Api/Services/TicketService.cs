@@ -6,7 +6,7 @@ namespace HelpDeskLite.Api.Services;
 public sealed class TicketService(ApplicationDbContext db) {
     public static readonly string[] Categories=["IT Support","Network","Email","Access & Accounts","Other"];
     private IQueryable<Ticket> FullQuery()=>db.Tickets.Include(x=>x.CreatedByUser).Include(x=>x.AssignedToUser).Include(x=>x.Comments).ThenInclude(x=>x.AuthorUser).Include(x=>x.StatusHistory).ThenInclude(x=>x.ChangedByUser).AsSplitQuery();
-    public async Task<List<TicketDto>> QueryAsync(TicketQuery query,string? createdBy=null,bool excludeResolved=false,CancellationToken ct=default){
+    private IQueryable<Ticket> Filter(TicketQuery query,string? createdBy,bool excludeResolved){
         IQueryable<Ticket> tickets=FullQuery().AsNoTracking();
         if(createdBy is not null)tickets=tickets.Where(x=>x.CreatedByUserId==createdBy);
         if(excludeResolved&&query.Status is null)tickets=tickets.Where(x=>x.Status!=TicketStatus.Resolved);
@@ -14,7 +14,13 @@ public sealed class TicketService(ApplicationDbContext db) {
         if(!string.IsNullOrWhiteSpace(query.Category))tickets=tickets.Where(x=>x.Category==query.Category);
         if(!string.IsNullOrWhiteSpace(query.OwnerId))tickets=query.OwnerId=="unassigned"?tickets.Where(x=>x.AssignedToUserId==null):tickets.Where(x=>x.AssignedToUserId==query.OwnerId);
         if(!string.IsNullOrWhiteSpace(query.Search)){var term=query.Search.Trim();tickets=tickets.Where(x=>x.TicketNumber.Contains(term)||x.Title.Contains(term));}
-        return (await tickets.OrderByDescending(x=>x.CreatedAt).ToListAsync(ct)).Select(ToDto).ToList();
+        return tickets;
+    }
+    public async Task<TicketPageDto> QueryPageAsync(TicketQuery query,string? createdBy=null,bool excludeResolved=false,CancellationToken ct=default){
+        var tickets=Filter(query,createdBy,excludeResolved);var total=await tickets.CountAsync(ct);var counts=await tickets.GroupBy(x=>x.Status).Select(group=>new{Status=group.Key,Count=group.Count()}).ToDictionaryAsync(x=>x.Status,x=>x.Count,ct);var unassigned=await tickets.CountAsync(x=>x.AssignedToUserId==null,ct);var items=(await tickets.OrderByDescending(x=>x.CreatedAt).Skip((query.Page-1)*query.PageSize).Take(query.PageSize).ToListAsync(ct)).Select(ToDto).ToList();int Count(TicketStatus status)=>counts.GetValueOrDefault(status);return new(items,query.Page,query.PageSize,total,(int)Math.Ceiling(total/(double)query.PageSize),Count(TicketStatus.Open),Count(TicketStatus.InProgress),Count(TicketStatus.InReview),Count(TicketStatus.Resolved),unassigned);
+    }
+    public async Task<List<TicketDto>> QueryAsync(TicketQuery query,string? createdBy=null,bool excludeResolved=false,CancellationToken ct=default){
+        return (await Filter(query,createdBy,excludeResolved).OrderByDescending(x=>x.CreatedAt).ToListAsync(ct)).Select(ToDto).ToList();
     }
     public async Task<TicketDto?> GetAsync(int id,string userId,string role,CancellationToken ct=default){var ticket=await FullQuery().AsNoTracking().SingleOrDefaultAsync(x=>x.Id==id,ct);if(ticket is null)return null;if(role==AppRoles.Employee&&ticket.CreatedByUserId!=userId)throw new UnauthorizedAccessException();return ToDto(ticket);}
     public async Task<TicketDto> CreateAsync(CreateTicketRequest request,string userId,CancellationToken ct=default){if(string.IsNullOrWhiteSpace(request.Title)||string.IsNullOrWhiteSpace(request.Description))throw new ArgumentException("Title and description are required.");if(!Categories.Contains(request.Category))throw new ArgumentException("Unsupported category.");var now=DateTimeOffset.UtcNow;var sequence=(await db.Tickets.MaxAsync(x=>(int?)x.Id,ct)??0)+1001;var ticket=new Ticket{TicketNumber=$"HDL-{sequence}",Title=request.Title.Trim(),Description=request.Description.Trim(),Category=request.Category,Status=TicketStatus.Open,Priority=TicketPriority.Medium,CreatedByUserId=userId,CreatedAt=now,UpdatedAt=now};ticket.StatusHistory.Add(new TicketStatusHistory{FromStatus=null,ToStatus=TicketStatus.Open,ChangedByUserId=userId,ChangedAt=now});db.Tickets.Add(ticket);await db.SaveChangesAsync(ct);return(await GetAsync(ticket.Id,userId,AppRoles.Employee,ct))!;}

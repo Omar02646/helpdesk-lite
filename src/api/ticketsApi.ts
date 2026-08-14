@@ -8,10 +8,13 @@ const date=(value:string)=>new Intl.DateTimeFormat('en-US',{month:'short',day:'n
 const dateTime=(value:string)=>new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit'}).format(new Date(value))
 export const mapTicket=(ticket:ApiTicket):Ticket=>({id:String(ticket.id),ticketNumber:ticket.ticketNumber,title:ticket.title,description:ticket.description,category:ticket.category,status:statusMap[ticket.status],priority:ticket.priority,createdBy:ticket.createdBy,assignedTo:ticket.assignedTo,assignedToUserId:ticket.assignedToUserId,createdAt:date(ticket.createdAt),updatedAt:date(ticket.updatedAt),resolvedAt:ticket.resolvedAt?date(ticket.resolvedAt):null,comments:ticket.comments.map(item=>({...item,id:String(item.id),createdAt:dateTime(item.createdAt)})),history:ticket.history.map(item=>({...item,id:String(item.id),createdAt:dateTime(item.createdAt)}))})
 const query=(values:Record<string,string|undefined>)=>{const params=new URLSearchParams();Object.entries(values).forEach(([key,value])=>{if(value)params.set(key,value)});const text=params.toString();return text?`?${text}`:''}
+type ApiPage={items:ApiTicket[];page:number;pageSize:number;totalCount:number;totalPages:number;open:number;inProgress:number;inReview:number;resolved:number;unassigned:number}
+export type TicketPage=Omit<ApiPage,'items'>&{items:Ticket[]}
+const mapPage=(value:ApiPage):TicketPage=>({...value,items:value.items.map(mapTicket)})
 export const ticketsApi={
-  my:async(filters:Record<string,string|undefined>={})=>(await api<ApiTicket[]>(`/api/tickets/my${query(filters)}`)).map(mapTicket),
-  all:async(filters:Record<string,string|undefined>={})=>(await api<ApiTicket[]>(`/api/tickets${query(filters)}`)).map(mapTicket),
-  queue:async(filters:Record<string,string|undefined>={})=>(await api<ApiTicket[]>(`/api/support/queue${query(filters)}`)).map(mapTicket),
+  my:async(filters:Record<string,string|undefined>={})=>mapPage(await api<ApiPage>(`/api/tickets/my${query(filters)}`)),
+  all:async(filters:Record<string,string|undefined>={})=>mapPage(await api<ApiPage>(`/api/tickets${query(filters)}`)),
+  queue:async(filters:Record<string,string|undefined>={})=>mapPage(await api<ApiPage>(`/api/support/queue${query(filters)}`)),
   get:async(id:string)=>mapTicket(await api<ApiTicket>(`/api/tickets/${id}`)),
   create:async(data:{title:string;category:string;description:string})=>mapTicket(await api<ApiTicket>('/api/tickets',{method:'POST',body:JSON.stringify(data)})),
   assign:(id:string,userId:string|null)=>api<void>(`/api/tickets/${id}/assignee`,{method:'PATCH',body:JSON.stringify({userId})}),

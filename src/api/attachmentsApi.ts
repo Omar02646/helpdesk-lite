@@ -1,5 +1,5 @@
-import { ApiError, api } from './client'
+import { ApiError, api, responseError } from './client'
 export type TicketAttachment={id:number;originalFileName:string;contentType:string;sizeBytes:number;uploadedBy:string;createdAt:string}
-async function upload(ticketId:string,file:File){const body=new FormData();body.append('file',file);const response=await fetch(`/api/tickets/${ticketId}/attachments`,{method:'POST',credentials:'include',body});if(!response.ok){let message='The image could not be uploaded.';try{const data=await response.json() as {message?:string;title?:string};message=data.message??data.title??message}catch{ /* no JSON error body */ }throw new ApiError(response.status,message)}return response.json() as Promise<TicketAttachment>}
+async function upload(ticketId:string,file:File){const body=new FormData();body.append('file',file);let response:Response;try{response=await fetch(`/api/tickets/${ticketId}/attachments`,{method:'POST',credentials:'include',body})}catch{throw new ApiError(0,'Unable to upload the image. Check your connection and try again.')}if(!response.ok)throw await responseError(response);return response.json() as Promise<TicketAttachment>}
 export const attachmentsApi={list:(ticketId:string)=>api<TicketAttachment[]>(`/api/tickets/${ticketId}/attachments`),upload,url:(ticketId:string,id:number,download=false)=>`/api/tickets/${ticketId}/attachments/${id}${download?'?download=true':''}`}
 export const formatFileSize=(bytes:number)=>bytes<1024*1024?`${Math.max(1,Math.round(bytes/1024))} KB`:`${(bytes/(1024*1024)).toFixed(1)} MB`

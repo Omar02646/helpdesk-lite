@@ -1,10 +1,9 @@
 // oxlint-disable react/only-export-components -- provider and hook form one module
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, type ReactNode } from 'react'
 import { ticketsApi } from '../api/ticketsApi'
 import type { Ticket, TicketStatus } from '../types/ticket'
-type Filters=Record<string,string|undefined>
-type Value={tickets:Ticket[];loading:boolean;error:string|null;loadMy:(f?:Filters)=>Promise<void>;loadAll:(f?:Filters)=>Promise<void>;loadQueue:(f?:Filters)=>Promise<void>;createTicket:(data:Pick<Ticket,'title'|'category'|'description'>)=>Promise<Ticket>;updateTicket:(id:string,patch:Partial<Ticket>)=>Promise<void>;addComment:(id:string,body:string)=>Promise<void>}
+type Value={createTicket:(data:Pick<Ticket,'title'|'category'|'description'>)=>Promise<Ticket>}
 const Context=createContext<Value|null>(null)
-export function TicketProvider({children}:{children:ReactNode}){const[tickets,setTickets]=useState<Ticket[]>([]);const[loading,setLoading]=useState(false);const[error,setError]=useState<string|null>(null);const load=async(fn:()=>Promise<Ticket[]>)=>{setLoading(true);setError(null);try{setTickets(await fn())}catch(e){setError(e instanceof Error?e.message:'Unable to load tickets.')}finally{setLoading(false)}};const loadMy=(f:Filters={})=>load(()=>ticketsApi.my(f));const loadAll=(f:Filters={})=>load(()=>ticketsApi.all(f));const loadQueue=(f:Filters={})=>load(()=>ticketsApi.queue(f));const createTicket=(data:Pick<Ticket,'title'|'category'|'description'>)=>ticketsApi.create(data);const updateTicket=async(id:string,patch:Partial<Ticket>)=>{if(patch.status)await ticketsApi.status(id,patch.status);if('assignedToUserId'in patch)await ticketsApi.assign(id,patch.assignedToUserId??null)};const addComment=(id:string,body:string)=>ticketsApi.comment(id,body);return <Context.Provider value={{tickets,loading,error,loadMy,loadAll,loadQueue,createTicket,updateTicket,addComment}}>{children}</Context.Provider>}
+export function TicketProvider({children}:{children:ReactNode}){const createTicket=(data:Pick<Ticket,'title'|'category'|'description'>)=>ticketsApi.create(data);return <Context.Provider value={{createTicket}}>{children}</Context.Provider>}
 export function useTickets(){const value=useContext(Context);if(!value)throw new Error('useTickets must be inside TicketProvider');return value}
 export const ticketStatuses:TicketStatus[]=['Open','In Progress','In Review','Resolved']

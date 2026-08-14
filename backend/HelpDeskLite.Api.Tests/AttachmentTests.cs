@@ -1,7 +1,14 @@
-using System.Net;using System.Net.Http.Json;using HelpDeskLite.Api.Contracts;using HelpDeskLite.Api.Domain;using Xunit;
+using System.Net;
+using System.Net.Http.Json;
+using HelpDeskLite.Api.Contracts;
+using HelpDeskLite.Api.Domain;
+using Xunit;
+
 namespace HelpDeskLite.Api.Tests;
-public sealed class AttachmentTests(ApiFactory factory):IClassFixture<ApiFactory>{
-    private static MultipartFormDataContent Image(string name="screen.png",string type="image/png",int size=16){var content=new MultipartFormDataContent();var bytes=new byte[size];bytes[0]=137;var file=new ByteArrayContent(bytes);file.Headers.ContentType=new(type);content.Add(file,"file",name);return content;}
+
+public sealed class AttachmentTests(ApiFactory factory):IClassFixture<ApiFactory>
+{
+    private static MultipartFormDataContent Image(string name="screen.png",string type="image/png",int size=16,bool validSignature=true){var content=new MultipartFormDataContent();var bytes=new byte[size];if(validSignature&&size>=8)new byte[]{0x89,0x50,0x4e,0x47,0x0d,0x0a,0x1a,0x0a}.CopyTo(bytes,0);var file=new ByteArrayContent(bytes);file.Headers.ContentType=new(type);content.Add(file,"file",name);return content;}
     private async Task<AttachmentDto> UploadOwn(){using var body=Image();var response=await factory.ClientFor(ApiFactory.EmployeeId,AppRoles.Employee).PostAsync("/api/tickets/1/attachments",body);response.EnsureSuccessStatusCode();return(await response.Content.ReadFromJsonAsync<AttachmentDto>())!;}
     [Fact]public async Task Employee_can_upload_image_to_own_ticket(){var item=await UploadOwn();Assert.Equal("screen.png",item.OriginalFileName);Assert.NotEmpty(Directory.GetFiles(factory.AttachmentRoot));}
     [Fact]public async Task Employee_cannot_upload_to_another_employees_ticket(){using var body=Image();var response=await factory.ClientFor(ApiFactory.EmployeeId,AppRoles.Employee).PostAsync("/api/tickets/2/attachments",body);Assert.Equal(HttpStatusCode.Forbidden,response.StatusCode);}
@@ -9,4 +16,7 @@ public sealed class AttachmentTests(ApiFactory factory):IClassFixture<ApiFactory
     [Fact]public async Task Oversized_file_is_rejected(){using var body=Image(size:5*1024*1024+1);var response=await factory.ClientFor(ApiFactory.EmployeeId,AppRoles.Employee).PostAsync("/api/tickets/1/attachments",body);Assert.Equal(HttpStatusCode.BadRequest,response.StatusCode);}
     [Fact]public async Task Authorized_user_can_retrieve_metadata_and_file(){var item=await UploadOwn();var client=factory.ClientFor(ApiFactory.AgentId,AppRoles.SupportAgent);var metadata=await client.GetFromJsonAsync<List<AttachmentDto>>("/api/tickets/1/attachments");Assert.Contains(metadata!,entry=>entry.Id==item.Id);var file=await client.GetAsync($"/api/tickets/1/attachments/{item.Id}");Assert.Equal(HttpStatusCode.OK,file.StatusCode);Assert.Equal("image/png",file.Content.Headers.ContentType?.MediaType);}
     [Fact]public async Task Unauthorized_employee_cannot_download_another_employees_attachment(){var item=await UploadOwn();var response=await factory.ClientFor(ApiFactory.OtherEmployeeId,AppRoles.Employee).GetAsync($"/api/tickets/1/attachments/{item.Id}");Assert.Equal(HttpStatusCode.Forbidden,response.StatusCode);}
+    [Fact]public async Task Invalid_image_signature_is_rejected(){using var body=Image(validSignature:false);var response=await factory.ClientFor(ApiFactory.EmployeeId,AppRoles.Employee).PostAsync("/api/tickets/1/attachments",body);Assert.Equal(HttpStatusCode.BadRequest,response.StatusCode);}
+    [Theory][InlineData(AppRoles.SupportAgent,ApiFactory.AgentId)][InlineData(AppRoles.Manager,ApiFactory.ManagerId)]public async Task Non_employee_roles_cannot_upload_attachments(string role,string userId){using var body=Image();var response=await factory.ClientFor(userId,role).PostAsync("/api/tickets/1/attachments",body);Assert.Equal(HttpStatusCode.Forbidden,response.StatusCode);}
+    [Fact]public async Task Unknown_attachment_returns_404(){var response=await factory.ClientFor(ApiFactory.EmployeeId,AppRoles.Employee).GetAsync("/api/tickets/1/attachments/99999");Assert.Equal(HttpStatusCode.NotFound,response.StatusCode);}
 }

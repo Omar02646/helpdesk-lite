@@ -1,0 +1,26 @@
+using HelpDeskLite.Api.Contracts;
+using HelpDeskLite.Api.Data;
+using HelpDeskLite.Api.Domain;
+using Microsoft.EntityFrameworkCore;
+namespace HelpDeskLite.Api.Services;
+public sealed class TicketService(ApplicationDbContext db) {
+    public static readonly string[] Categories=["IT Support","Network","Email","Access & Accounts","Other"];
+    private IQueryable<Ticket> FullQuery()=>db.Tickets.Include(x=>x.CreatedByUser).Include(x=>x.AssignedToUser).Include(x=>x.Comments).ThenInclude(x=>x.AuthorUser).Include(x=>x.StatusHistory).ThenInclude(x=>x.ChangedByUser).AsSplitQuery();
+    public async Task<List<TicketDto>> QueryAsync(TicketQuery query,string? createdBy=null,bool excludeResolved=false,CancellationToken ct=default){
+        IQueryable<Ticket> tickets=FullQuery().AsNoTracking();
+        if(createdBy is not null)tickets=tickets.Where(x=>x.CreatedByUserId==createdBy);
+        if(excludeResolved&&query.Status is null)tickets=tickets.Where(x=>x.Status!=TicketStatus.Resolved);
+        if(query.Status is not null)tickets=tickets.Where(x=>x.Status==query.Status);
+        if(!string.IsNullOrWhiteSpace(query.Category))tickets=tickets.Where(x=>x.Category==query.Category);
+        if(!string.IsNullOrWhiteSpace(query.OwnerId))tickets=query.OwnerId=="unassigned"?tickets.Where(x=>x.AssignedToUserId==null):tickets.Where(x=>x.AssignedToUserId==query.OwnerId);
+        if(!string.IsNullOrWhiteSpace(query.Search)){var term=query.Search.Trim();tickets=tickets.Where(x=>x.TicketNumber.Contains(term)||x.Title.Contains(term));}
+        return (await tickets.OrderByDescending(x=>x.CreatedAt).ToListAsync(ct)).Select(ToDto).ToList();
+    }
+    public async Task<TicketDto?> GetAsync(int id,string userId,string role,CancellationToken ct=default){var ticket=await FullQuery().AsNoTracking().SingleOrDefaultAsync(x=>x.Id==id,ct);if(ticket is null)return null;if(role==AppRoles.Employee&&ticket.CreatedByUserId!=userId)throw new UnauthorizedAccessException();return ToDto(ticket);}
+    public async Task<TicketDto> CreateAsync(CreateTicketRequest request,string userId,CancellationToken ct=default){if(string.IsNullOrWhiteSpace(request.Title)||string.IsNullOrWhiteSpace(request.Description))throw new ArgumentException("Title and description are required.");if(!Categories.Contains(request.Category))throw new ArgumentException("Unsupported category.");var now=DateTimeOffset.UtcNow;var sequence=(await db.Tickets.MaxAsync(x=>(int?)x.Id,ct)??0)+1001;var ticket=new Ticket{TicketNumber=$"HDL-{sequence}",Title=request.Title.Trim(),Description=request.Description.Trim(),Category=request.Category,Status=TicketStatus.Open,Priority=TicketPriority.Medium,CreatedByUserId=userId,CreatedAt=now,UpdatedAt=now};ticket.StatusHistory.Add(new TicketStatusHistory{FromStatus=null,ToStatus=TicketStatus.Open,ChangedByUserId=userId,ChangedAt=now});db.Tickets.Add(ticket);await db.SaveChangesAsync(ct);return(await GetAsync(ticket.Id,userId,AppRoles.Employee,ct))!;}
+    public async Task AssignAsync(int id,string? assigneeId,string actorId,CancellationToken ct=default){_ = actorId;var ticket=await db.Tickets.FindAsync([id],ct)??throw new KeyNotFoundException();if(assigneeId is not null&&!await(from userRole in db.UserRoles join role in db.Roles on userRole.RoleId equals role.Id where userRole.UserId==assigneeId&&role.Name==AppRoles.SupportAgent select userRole).AnyAsync(ct))throw new ArgumentException("Support agent not found.");ticket.AssignedToUserId=assigneeId;ticket.UpdatedAt=DateTimeOffset.UtcNow;await db.SaveChangesAsync(ct);}
+    public async Task UpdateStatusAsync(int id,TicketStatus status,string actorId,CancellationToken ct=default){var ticket=await db.Tickets.Include(x=>x.StatusHistory).SingleOrDefaultAsync(x=>x.Id==id,ct)??throw new KeyNotFoundException();if(ticket.Status==status)return;var now=DateTimeOffset.UtcNow;ticket.StatusHistory.Add(new TicketStatusHistory{FromStatus=ticket.Status,ToStatus=status,ChangedByUserId=actorId,ChangedAt=now});ticket.Status=status;ticket.UpdatedAt=now;ticket.ResolvedAt=status==TicketStatus.Resolved?now:null;await db.SaveChangesAsync(ct);}
+    public async Task AddCommentAsync(int id,string body,string actorId,CancellationToken ct=default){if(string.IsNullOrWhiteSpace(body))throw new ArgumentException("Update text is required.");if(!await db.Tickets.AnyAsync(x=>x.Id==id,ct))throw new KeyNotFoundException();db.TicketComments.Add(new TicketComment{TicketId=id,AuthorUserId=actorId,Body=body.Trim(),CreatedAt=DateTimeOffset.UtcNow});await db.SaveChangesAsync(ct);}
+    public static TicketDto ToDto(Ticket x)=>new(x.Id,x.TicketNumber,x.Title,x.Description,x.Category,x.Status,x.Priority,x.CreatedByUser?.DisplayName??"Unknown",x.AssignedToUser?.DisplayName,x.AssignedToUserId,x.CreatedAt,x.UpdatedAt,x.ResolvedAt,x.Comments.OrderBy(c=>c.CreatedAt).Select(c=>new CommentDto(c.Id,c.AuthorUser?.DisplayName??"Unknown",c.Body,c.CreatedAt)).ToList(),x.StatusHistory.OrderBy(h=>h.ChangedAt).Select(h=>new HistoryDto(h.Id,h.FromStatus is null?"Ticket created":$"Status changed to {Display(h.ToStatus)}",h.FromStatus is null?"Request submitted":$"Changed by {h.ChangedByUser?.DisplayName??"Unknown"}",h.ChangedAt)).ToList());
+    private static string Display(TicketStatus status)=>status switch{TicketStatus.InProgress=>"In Progress",TicketStatus.InReview=>"In Review",_=>status.ToString()};
+}

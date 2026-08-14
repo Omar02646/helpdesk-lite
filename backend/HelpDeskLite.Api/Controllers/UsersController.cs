@@ -1,0 +1,3 @@
+using HelpDeskLite.Api.Contracts;using HelpDeskLite.Api.Domain;using Microsoft.AspNetCore.Authorization;using Microsoft.AspNetCore.Identity;using Microsoft.AspNetCore.Mvc;using Microsoft.EntityFrameworkCore;
+namespace HelpDeskLite.Api.Controllers;
+[ApiController,Route("api/users"),Authorize(Roles=AppRoles.SupportAgent)]public sealed class UsersController(UserManager<ApplicationUser> users):ControllerBase{[HttpGet("support-agents")]public async Task<List<UserDto>> Agents(){var agents=await users.GetUsersInRoleAsync(AppRoles.SupportAgent);return agents.Select(x=>new UserDto(x.Id,x.DisplayName,x.Email!,AppRoles.SupportAgent,string.Concat(x.DisplayName.Split(' ').Select(y=>y[0])))).ToList();}}

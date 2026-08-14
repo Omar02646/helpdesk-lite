@@ -1,0 +1,16 @@
+using System.ComponentModel.DataAnnotations;
+using HelpDeskLite.Api.Domain;
+namespace HelpDeskLite.Api.Contracts;
+public sealed record LoginRequest([Required,EmailAddress]string Email,[Required]string Password,bool RememberMe=false);
+public sealed record UserDto(string Id,string Name,string Email,string Role,string Initials);
+public sealed record CreateTicketRequest([Required,MaxLength(200)]string Title,[Required] string Category,[Required,MaxLength(5000)]string Description);
+public sealed record ChangeAssigneeRequest(string? UserId);
+public sealed record ChangeStatusRequest(TicketStatus Status);
+public sealed record CreateCommentRequest([Required,MaxLength(4000)]string Body);
+public sealed record CommentDto(int Id,string Author,string Body,DateTimeOffset CreatedAt);
+public sealed record HistoryDto(int Id,string Title,string Detail,DateTimeOffset CreatedAt);
+public sealed record TicketDto(int Id,string TicketNumber,string Title,string Description,string Category,TicketStatus Status,TicketPriority Priority,string CreatedBy,string? AssignedTo,string? AssignedToUserId,DateTimeOffset CreatedAt,DateTimeOffset UpdatedAt,DateTimeOffset? ResolvedAt,IReadOnlyList<CommentDto> Comments,IReadOnlyList<HistoryDto> History);
+public sealed record TicketQuery(string? Search,TicketStatus? Status,string? Category,string? OwnerId);
+public sealed record WorkloadDto(string UserId,string Name,int ActiveTickets);
+public sealed record ManagerSummaryDto(int Open,int Unassigned,int InProgress,int Resolved,IReadOnlyList<WorkloadDto> Workload,IReadOnlyList<TicketDto> RecentTickets,IReadOnlyList<TicketDto> NeedsAttention);
+public sealed record AttachmentDto(int Id,string OriginalFileName,string ContentType,long SizeBytes,string UploadedBy,DateTimeOffset CreatedAt);

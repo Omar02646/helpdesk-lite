@@ -1,0 +1,6 @@
+@HelpDeskLite.Api_HostAddress = http://localhost:5023
+
+GET {{HelpDeskLite.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

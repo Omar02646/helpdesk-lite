@@ -1,13 +1,45 @@
-import { Eye, EyeOff, Headphones, LockKeyhole, Mail } from 'lucide-react'
+import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
 import { homeForRole } from '../components/layout/RoleRoute'
 import { Button } from '../components/ui/Button'
 import { useSession } from '../context/SessionContext'
 
+function SupportIllustration() {
+  return <aside className="login-visual" aria-label="HelpDesk support illustration">
+    <div className="support-badge" aria-label="24/7 support"><strong>24/7</strong><span>Support</span></div>
+    <div className="message-bubble message-bubble-left" aria-hidden="true"><span/><span/><span/></div>
+    <div className="message-bubble message-bubble-right" aria-hidden="true"><span/><span/></div>
+    <svg className="support-illustration" viewBox="0 0 560 500" role="img" aria-labelledby="support-illustration-title">
+      <title id="support-illustration-title">Support agent helping from a laptop</title>
+      <path className="illustration-leaf" d="M80 374c-38-55-26-111 31-144 11 65 1 113-31 144Z"/>
+      <path className="illustration-leaf secondary" d="M458 374c38-55 26-111-31-144-11 65-1 113 31 144Z"/>
+      <path className="illustration-stem" d="M82 378c2-60 12-104 29-135M456 378c-2-60-12-104-29-135"/>
+      <ellipse className="illustration-shadow" cx="282" cy="427" rx="188" ry="23"/>
+      <path className="agent-body" d="M194 401c8-94 42-142 89-142 52 0 86 50 94 142Z"/>
+      <path className="agent-shirt" d="M245 276l37 42 39-42 24 125H220Z"/>
+      <circle className="agent-face" cx="283" cy="200" r="65"/>
+      <path className="agent-hair" d="M219 204c0-56 27-88 70-88 39 0 66 29 66 72-16-7-29-20-39-38-19 27-52 44-97 54Z"/>
+      <path className="headset-band" d="M222 210c-2-58 22-92 63-92 42 0 68 36 66 93"/>
+      <rect className="headset-ear" x="210" y="202" width="24" height="48" rx="12"/>
+      <rect className="headset-ear" x="340" y="202" width="24" height="48" rx="12"/>
+      <path className="headset-mic" d="M351 239c-1 27-17 38-40 38"/>
+      <circle className="headset-mic-dot" cx="309" cy="277" r="6"/>
+      <circle className="agent-eye" cx="262" cy="205" r="4"/>
+      <circle className="agent-eye" cx="307" cy="205" r="4"/>
+      <path className="agent-smile" d="M267 232c10 10 24 10 34 0"/>
+      <path className="agent-arm" d="M222 315c-29 16-43 44-49 83M345 315c30 16 43 44 49 83"/>
+      <path className="laptop-screen" d="M183 324h198l-23 101H205Z"/>
+      <path className="laptop-base" d="M169 425h226c-8 16-23 23-45 23H214c-22 0-37-7-45-23Z"/>
+      <circle className="laptop-mark" cx="282" cy="377" r="16"/>
+      <path className="laptop-mark-line" d="M274 377h16M282 369v16"/>
+    </svg>
+    <div className="visual-caption"><strong>Support when your team needs it.</strong><span>Clear requests. Faster resolutions.</span></div>
+  </aside>
+}
+
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false)
-  const [resetNotice, setResetNotice] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(false)
@@ -30,5 +62,34 @@ export default function Login() {
     }
   }
 
-  return <main className="login-page"><section className="login-hero"><div className="login-brand"><span className="brand-mark"><Headphones/></span>HelpDesk Lite</div><div><span className="eyebrow light">Internal support, simplified</span><h1>Get help. Stay informed.<br/>Keep work moving.</h1><p>One clear workspace for every request—from submission to resolution.</p></div><div className="hero-proof"><span>01</span><p><strong>Submit</strong> a clear request</p><span>02</span><p><strong>Track</strong> every update</p><span>03</span><p><strong>Resolve</strong> work faster</p></div></section><section className="login-form-side"><form className="login-card" onSubmit={submit}><span className="eyebrow">Welcome back</span><h2>Sign in to your workspace</h2><p>Use your HelpDesk Lite account.</p>{error&&<div className="form-error" role="alert">{error}</div>}<label>Email address<div className="input-with-icon"><Mail size={18}/><input type="email" required value={email} onChange={event=>setEmail(event.target.value)} placeholder="Enter your email" autoComplete="username"/></div></label><label>Password<div className="input-with-icon"><LockKeyhole size={18}/><input type={showPassword?'text':'password'} required value={password} onChange={event=>setPassword(event.target.value)} placeholder="Enter your password" autoComplete="current-password"/><button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></label><div className="form-row"><label className="check"><input type="checkbox" checked={remember} onChange={event=>setRemember(event.target.checked)}/>Remember me</label><button type="button" className="text-button" onClick={()=>setResetNotice(true)}>Forgot password?</button></div>{resetNotice&&<div className="reset-notice" role="status">Password reset is not implemented in this UI preview.</div>}<Button type="submit" disabled={submitting}>{submitting?'Signing in…':'Sign In'}</Button><small>Internal accounts are provisioned by authorized engineering or IT staff.</small></form></section></main>
+  return <main className="login-page">
+    <div className="login-shell">
+      <section className="login-form-side">
+        <form className="login-card" onSubmit={submit}>
+          <header className="login-heading">
+            <h1>HelpDesk <span>Lite</span></h1>
+            <p>Your issues. Our priority.</p>
+            <span className="login-accent" aria-hidden="true"/>
+          </header>
+          <div className="login-fields">
+            {error&&<div className="form-error" role="alert">{error}</div>}
+            <label htmlFor="login-email">Email address</label>
+            <div className="input-with-icon">
+              <Mail size={19} aria-hidden="true"/>
+              <input id="login-email" type="email" required value={email} onChange={event=>setEmail(event.target.value)} placeholder="Enter your email" autoComplete="email"/>
+            </div>
+            <label htmlFor="login-password">Password</label>
+            <div className="input-with-icon">
+              <LockKeyhole size={19} aria-hidden="true"/>
+              <input id="login-password" type={showPassword?'text':'password'} required value={password} onChange={event=>setPassword(event.target.value)} placeholder="Enter your password" autoComplete="current-password"/>
+              <button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={19}/>:<Eye size={19}/>}</button>
+            </div>
+            <label className="check" htmlFor="remember-me"><input id="remember-me" type="checkbox" checked={remember} onChange={event=>setRemember(event.target.checked)}/><span>Remember me</span></label>
+            <Button type="submit" disabled={submitting}>{submitting?'Signing in…':'Sign In'}</Button>
+          </div>
+        </form>
+      </section>
+      <SupportIllustration/>
+    </div>
+  </main>
 }

@@ -4,4 +4,31 @@ import { useNavigate } from 'react-router'
 import { homeForRole } from '../components/layout/RoleRoute'
 import { Button } from '../components/ui/Button'
 import { useSession } from '../context/SessionContext'
-export default function Login(){const[showPassword,setShowPassword]=useState(false);const[resetNotice,setResetNotice]=useState(false);const[email,setEmail]=useState('omar@helpdesklite.local');const[password,setPassword]=useState('');const[remember,setRemember]=useState(false);const[error,setError]=useState('');const[submitting,setSubmitting]=useState(false);const navigate=useNavigate();const{login}=useSession();const submit=async(event:FormEvent)=>{event.preventDefault();setError('');setSubmitting(true);try{const user=await login(email,password,remember);navigate(homeForRole(user.role))}catch(reason){setError(reason instanceof Error?reason.message:'Unable to sign in.')}finally{setSubmitting(false)}};return <main className="login-page"><section className="login-hero"><div className="login-brand"><span className="brand-mark"><Headphones/></span>HelpDesk Lite</div><div><span className="eyebrow light">Internal support, simplified</span><h1>Get help. Stay informed.<br/>Keep work moving.</h1><p>One clear workspace for every request—from submission to resolution.</p></div><div className="hero-proof"><span>01</span><p><strong>Submit</strong> a clear request</p><span>02</span><p><strong>Track</strong> every update</p><span>03</span><p><strong>Resolve</strong> work faster</p></div></section><section className="login-form-side"><form className="login-card" onSubmit={submit}><span className="eyebrow">Welcome back</span><h2>Sign in to your workspace</h2><p>Use your HelpDesk Lite development account.</p>{error&&<div className="form-error" role="alert">{error}</div>}<label>Email address<div className="input-with-icon"><Mail size={18}/><input type="email" required value={email} onChange={event=>setEmail(event.target.value)} autoComplete="username"/></div></label><label>Password<div className="input-with-icon"><LockKeyhole size={18}/><input type={showPassword?'text':'password'} required value={password} onChange={event=>setPassword(event.target.value)} autoComplete="current-password"/><button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></label><div className="form-row"><label className="check"><input type="checkbox" checked={remember} onChange={event=>setRemember(event.target.checked)}/>Remember me</label><button type="button" className="text-button" onClick={()=>setResetNotice(true)}>Forgot password?</button></div>{resetNotice&&<div className="reset-notice" role="status">Password reset is not implemented in this UI preview.</div>}<Button type="submit" disabled={submitting}>{submitting?'Signing in…':'Sign In'}</Button><small>Internal accounts are provisioned by the development seed process.</small></form></section></main>}
+
+export default function Login() {
+  const [showPassword, setShowPassword] = useState(false)
+  const [resetNotice, setResetNotice] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [remember, setRemember] = useState(false)
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const navigate = useNavigate()
+  const { login } = useSession()
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    setError('')
+    setSubmitting(true)
+    try {
+      const user = await login(email, password, remember)
+      navigate(homeForRole(user.role))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Unable to sign in.')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return <main className="login-page"><section className="login-hero"><div className="login-brand"><span className="brand-mark"><Headphones/></span>HelpDesk Lite</div><div><span className="eyebrow light">Internal support, simplified</span><h1>Get help. Stay informed.<br/>Keep work moving.</h1><p>One clear workspace for every request—from submission to resolution.</p></div><div className="hero-proof"><span>01</span><p><strong>Submit</strong> a clear request</p><span>02</span><p><strong>Track</strong> every update</p><span>03</span><p><strong>Resolve</strong> work faster</p></div></section><section className="login-form-side"><form className="login-card" onSubmit={submit}><span className="eyebrow">Welcome back</span><h2>Sign in to your workspace</h2><p>Use your HelpDesk Lite account.</p>{error&&<div className="form-error" role="alert">{error}</div>}<label>Email address<div className="input-with-icon"><Mail size={18}/><input type="email" required value={email} onChange={event=>setEmail(event.target.value)} placeholder="Enter your email" autoComplete="username"/></div></label><label>Password<div className="input-with-icon"><LockKeyhole size={18}/><input type={showPassword?'text':'password'} required value={password} onChange={event=>setPassword(event.target.value)} placeholder="Enter your password" autoComplete="current-password"/><button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={18}/>:<Eye size={18}/>}</button></div></label><div className="form-row"><label className="check"><input type="checkbox" checked={remember} onChange={event=>setRemember(event.target.checked)}/>Remember me</label><button type="button" className="text-button" onClick={()=>setResetNotice(true)}>Forgot password?</button></div>{resetNotice&&<div className="reset-notice" role="status">Password reset is not implemented in this UI preview.</div>}<Button type="submit" disabled={submitting}>{submitting?'Signing in…':'Sign In'}</Button><small>Internal accounts are provisioned by authorized engineering or IT staff.</small></form></section></main>
+}

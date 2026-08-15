@@ -546,6 +546,57 @@ Potential future iterations—not current functionality—could include notifica
 
 ## Screenshots
 
-<!-- TODO: Add repository screenshots after capturing stable demo data. Recommended views: Login, Employee My Tickets, Create Ticket, Support Queue, Ticket Details with activity/attachments, and Manager Dashboard. -->
+These screens demonstrate the main Employee → Support Agent → Manager workflow.
 
-Screenshots are intentionally omitted until stable assets are added to the repository; no broken image paths are included.
+### Login
+
+Role-based sign-in entry point for HelpDesk Lite.
+
+![HelpDesk Lite Login](docs/screenshots/09-login.png)
+
+### Create Ticket
+
+Employee request form with category, description, and optional image attachments.
+
+![HelpDesk Lite Create Ticket](docs/screenshots/01-create-ticket.png)
+
+### Employee — My Tickets
+
+Employee workspace for finding and tracking submitted requests.
+
+![HelpDesk Lite Employee My Tickets](docs/screenshots/02-my-tickets.png)
+
+### Support Agent — Support Queue
+
+Support workspace for searching, filtering, and opening active requests.
+
+![HelpDesk Lite Support Queue](docs/screenshots/04-support-queue.png)
+
+### Support Agent — Ticket Progress
+
+Ticket activity view showing ownership, status, and a Support Agent progress update.
+
+![HelpDesk Lite Support Agent Ticket Progress](docs/screenshots/06-ticket-progress-update.png)
+
+### Manager Dashboard
+
+Read-only operational overview of ticket demand and Support Agent workload.
+
+![HelpDesk Lite Manager Dashboard](docs/screenshots/08-manager-dashboard.png)
+
+<details>
+<summary>Additional workflow screenshots</summary>
+
+### Ticket Details
+
+![HelpDesk Lite Ticket Details](docs/screenshots/03-ticket-details.png)
+
+### Ticket In Progress
+
+![HelpDesk Lite Ticket In Progress](docs/screenshots/05-support-ticket-in-progress.png)
+
+### Resolved Ticket
+
+![HelpDesk Lite Resolved Ticket](docs/screenshots/07-ticket-resolved.png)
+
+</details>

@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\HelpDeskLite.Api\HelpDeskLite.Api.csproj" />
+    <ProjectReference Include="..\HelpDeskLite.UserProvisioning\HelpDeskLite.UserProvisioning.csproj" />
   </ItemGroup>
 
 </Project>

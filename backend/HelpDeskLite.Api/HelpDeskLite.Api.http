@@ -1,6 +1,6 @@
-@HelpDeskLite.Api_HostAddress = http://localhost:5023
+@HelpDeskLite.Api_HostAddress = http://localhost:5098
 
-GET {{HelpDeskLite.Api_HostAddress}}/weatherforecast/
+GET {{HelpDeskLite.Api_HostAddress}}/health
 Accept: application/json
 
 ###

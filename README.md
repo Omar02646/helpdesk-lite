@@ -112,6 +112,80 @@ npm run lint
 npm run build
 ```
 
+## Internal User Provisioning
+
+HelpDesk Lite intentionally has no public registration, Admin role, or account-management page. Every person signs in through an ASP.NET Core Identity **User** account, and engineering/IT intentionally assigns that account exactly one application role:
+
+- `Employee`
+- `SupportAgent`
+- `Manager`
+
+Run the separate provisioning tool from a trusted terminal. It uses `UserManager<ApplicationUser>` and `RoleManager<IdentityRole>`, applies the same password policy as the API, confirms internal users' email addresses, rejects duplicate email addresses, and never prints passwords or connection strings.
+
+For the local Development database, the tool reads the API's checked-in local connection setting when run from the repository root:
+
+```powershell
+dotnet run --project backend\HelpDeskLite.UserProvisioning\HelpDeskLite.UserProvisioning.csproj
+```
+
+The interactive flow requests display name, email, role, password, and confirmation. Password input is hidden in an interactive console. Name, email, and role can optionally be supplied without putting the password in shell history:
+
+```powershell
+dotnet run --project backend\HelpDeskLite.UserProvisioning\HelpDeskLite.UserProvisioning.csproj -- --name "New Employee" --email "employee@example.com" --role Employee
+```
+
+For intentional automation only, the password can come from the process-scoped `HELPDESKLITE_PROVISIONING_PASSWORD` environment variable. Never use a plaintext password command-line argument.
+
+To provision against MonsterASP from a trusted local PC:
+
+```powershell
+$env:ConnectionStrings__DefaultConnection="REMOTE_MONSTERASP_CONNECTION_STRING"
+dotnet run --project backend\HelpDeskLite.UserProvisioning\HelpDeskLite.UserProvisioning.csproj
+Remove-Item Env:ConnectionStrings__DefaultConnection
+Remove-Item Env:HELPDESKLITE_PROVISIONING_PASSWORD -ErrorAction SilentlyContinue
+```
+
+Apply migrations before provisioning. Never share or commit user passwords, database credentials, or provisioning environment variables. The tool is run explicitly and is not included in API startup or the hosted website's public interface.
+
+## MonsterASP.NET deployment
+
+HelpDesk Lite is prepared for one ASP.NET Core 9 website on MonsterASP.NET. In Production, ASP.NET Core serves both `/api/...` and the compiled React SPA. Browser refreshes on React routes fall back to `wwwroot/index.html`; unmatched `/api/...` routes remain JSON 404 responses and are never handled by the SPA.
+
+1. In the MonsterASP Control Panel, create an ASP.NET Core 9 website and note its deployment target, but do not upload credentials into this repository.
+2. Create an MSSQL database and obtain the server, database, SQL username, and password from the control panel.
+3. Supply the production connection string as the `ConnectionStrings__DefaultConnection` application setting/environment variable. A typical shape is `Server=HOST;Database=DATABASE;User Id=USER;Password=PASSWORD;Encrypt=True;TrustServerCertificate=True`; use the exact values and options MonsterASP provides.
+4. Configure `ASPNETCORE_ENVIRONMENT=Production`. Configure `AttachmentStorage__RootPath=App_Data/attachments`, `AttachmentStorage__MaxFileSizeBytes=5242880`, and `AttachmentStorage__MaxFilesPerTicket=3`. Ensure the application identity has modify permission for the chosen persistent website folder. Do not place that directory under `wwwroot`.
+5. Apply migrations from a trusted local terminal using the remote connection string:
+
+   ```powershell
+   $env:ConnectionStrings__DefaultConnection="MONSTERASP_CONNECTION_STRING"
+   dotnet tool restore
+   dotnet tool run dotnet-ef database update --project backend\HelpDeskLite.Api\HelpDeskLite.Api.csproj --startup-project backend\HelpDeskLite.Api\HelpDeskLite.Api.csproj --configuration Release
+   ```
+
+6. Publish from the repository root. The publish target runs `npm ci`, runs the Vite production build, and includes `dist` as `wwwroot` automatically:
+
+   ```powershell
+   dotnet publish backend\HelpDeskLite.Api\HelpDeskLite.Api.csproj -c Release
+   ```
+
+7. Upload the contents of `backend\HelpDeskLite.Api\bin\Release\net9.0\publish` using the MonsterASP WebDeploy profile or ZIP/FTP workflow. Upload the folder contents—not an extra parent directory. The Web SDK generates the ASP.NET Core Module `web.config`.
+8. In the control panel, confirm ASP.NET Core 9, the Production environment, connection-string setting, and write permissions, then restart the website. Verify `/health`, `/login`, a direct refresh on `/tickets`, authentication, and a deliberately unknown `/api/...` route.
+9. Create a test ticket with an image, reload its details, and confirm the authorized image remains available. Confirm the file exists in the configured persistent attachment directory but is not directly web-accessible.
+10. Keep database, FTP, WebDeploy, and demo-account credentials out of Git, screenshots, logs, and support messages. Rotate any credential that is accidentally disclosed.
+
+### Intentional demo-account provisioning
+
+`DevelopmentSeeder` remains strictly Development-only and never executes on the hosted Production site. Provision portfolio/demo accounts explicitly with the Internal User Provisioning tool from a trusted local machine using the remote MonsterASP connection setting. Keep the hosted website in Production and never configure `SeedUsers__Password` there.
+
+### Production hosting notes
+
+- The frontend calls relative `/api/...` paths, so browser requests stay on the MonsterASP website origin. The Vite `/api` proxy remains Development-only.
+- `App_Data/attachments` resolves relative to the deployed application content root and is served only through authorized controller actions.
+- HTTPS redirection, HSTS, and Secure cookies are enabled in Production. ASP.NET Core Module/IIS integration supplies the original request scheme to the application.
+- `/health` returns only `{ "status": "Healthy" }`; it intentionally performs no database query and exposes no diagnostics.
+- Set `BuildFrontendOnPublish=false` only for specialized CI workflows that have already supplied `wwwroot`; the normal publish command should use the default integrated build.
+
 ## Current MVP assumptions and limitations
 
 - New tickets receive `Medium` priority; final priority rules require confirmation.

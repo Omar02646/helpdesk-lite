@@ -4,9 +4,11 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <FrontendRoot>$(MSBuildProjectDirectory)\..\..\</FrontendRoot>
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="9.0.14" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.14" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.14">
@@ -15,5 +17,21 @@
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.14" />
   </ItemGroup>
+
+  <Target Name="InstallFrontendDependencies" Inputs="$(FrontendRoot)package-lock.json" Outputs="$(FrontendRoot)node_modules\.package-lock.json" Condition="'$(BuildFrontendOnPublish)' != 'false'">
+    <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(FrontendRoot)" />
+  </Target>
+
+  <Target Name="PublishViteFrontend" AfterTargets="ComputeFilesToPublish" DependsOnTargets="InstallFrontendDependencies" Condition="'$(BuildFrontendOnPublish)' != 'false'">
+    <Exec Command="npm run build" WorkingDirectory="$(FrontendRoot)" />
+    <ItemGroup>
+      <FrontendDist Include="$(FrontendRoot)dist\**\*" />
+      <ResolvedFileToPublish Include="@(FrontendDist-&gt;'%(FullPath)')" Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>wwwroot\%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
 
 </Project>

@@ -47,11 +47,34 @@ The live database is intentionally kept without pre-created ticket data. Visitor
 
 > These credentials are intentionally public and are provided only for testing the live portfolio demo. The shared password belongs only to these demo accounts.
 
-### Why is there no public registration?
+### Account architecture
 
-HelpDesk Lite is designed as an internal company support system rather than a public consumer application. The product requirements call for sign-in and role-based access for Employees, Support Agents, and Managers; public self-registration was not required by the PRD and is intentionally not part of the V1 design.
+Normal public registration requires first name, last name, email, password, and password confirmation. The API always assigns exactly the `Employee` role; the request has no role field, so a public user cannot select `SupportAgent` or `Manager`. New public accounts must confirm their email before normal sign-in. Forgot-password and Identity-backed reset-password flows are available from the sign-in screen.
 
-In a real organization, authorized IT or engineering staff would create application accounts instead of anonymous public visitors. HelpDesk Lite implements that model through the separate `HelpDeskLite.UserProvisioning` console utility. For portfolio testing, the live application provides the pre-created Employee, Support Agent, and Manager demo accounts above.
+`SupportAgent` and `Manager` remain controlled roles created through the private `HelpDeskLite.UserProvisioning` console utility. Provisioned accounts are trusted and email-confirmed. Manager remains read-only operational oversight and is not an administrator.
+
+Portfolio Quick Demo Access is separate from registration and publicly offers the privileged SupportAgent and Manager experiences that cannot be self-assigned. It signs reviewers into the corresponding predefined Identity account with a normal non-persistent application cookie. The server still retains the configured Employee demo account for backward compatibility, owns every role-to-account mapping, validates actual role membership, and never sends a demo password to the browser. Demo users can switch between SupportAgent and Manager from the authenticated header; normal users do not see that control. Demo mode never bypasses API authorization.
+
+Recommended portfolio testing flow:
+
+1. For Employee testing, select **Create Account**, confirm the email address, sign in, and exercise the employee ticket workflow. Every public registration receives `Employee` automatically and has no role selector.
+2. For privileged-role testing, use **Quick Demo Access → Support Agent** or **Quick Demo Access → Manager**.
+
+### Email configuration
+
+Account confirmation and password reset use Gmail SMTP with `HelpDesk Lite <omarkenawy02@gmail.com>` as the configured sender. The SMTP password is intentionally absent from source and must be supplied through deployment configuration or user secrets.
+
+| Key | Purpose |
+| --- | --- |
+| `Email__SmtpHost` | SMTP host; `smtp.gmail.com` by default. |
+| `Email__SmtpPort` | SMTP STARTTLS port; `587` by default. |
+| `Email__Username` | SMTP username. |
+| `Email__Password` | Gmail App Password or deployment-managed SMTP secret; required and never committed. |
+| `Email__FromEmail` | Sender email; `omarkenawy02@gmail.com`. |
+| `Email__FromName` | Sender display name; `HelpDesk Lite`. |
+| `Email__FrontendBaseUrl` | Public frontend origin used for confirmation/reset links (for example `https://helpdesklite.runasp.net`). |
+
+Automated tests replace SMTP with an in-memory fake and do not send external email.
 
 ## Try the Complete Workflow
 
@@ -292,7 +315,7 @@ In Production, `dotnet publish` builds the React application and includes it und
 
 ## Database Model
 
-- `ApplicationUser` extends `IdentityUser` with a required display name.
+- `ApplicationUser` extends `IdentityUser` with a required legacy display name plus nullable, 50-character `FirstName` and `LastName` columns. Public registration requires both names; nullable columns keep existing users compatible.
 - `Ticket` stores number, title, description, validated category, status, priority, requester, optional assignee, and UTC-oriented timestamps.
 - `TicketComment` stores Support Agent progress updates and authors.
 - `TicketStatusHistory` records initial status and later status changes with actor and timestamp.
@@ -310,7 +333,7 @@ The only application roles are exactly:
 - `SupportAgent`
 - `Manager`
 
-Every account is an Identity **user**. Each intentionally provisioned HelpDesk Lite account receives exactly one supported application role. There is no public registration endpoint, registration page, Admin role, or hosted user-management interface.
+Every account is an Identity **user** with exactly one supported application role. Public registration creates Employee accounts only. There is no Admin role or hosted user-management interface; privileged real accounts remain internally provisioned.
 
 The API returns 401 for unauthenticated access and 403 for authenticated role or ownership violations. Employee ticket ownership checks and all mutation restrictions are enforced server-side, not only hidden in React.
 
@@ -424,7 +447,7 @@ Do not commit real SQL, MonsterASP, WebDeploy, or user credentials. The reposito
 
 - Applies pending EF Core migrations.
 - Ensures the three application roles exist.
-- Creates or updates the five development identities when `SeedUsers__Password` is configured.
+- Creates or updates the five legacy development identities and the three configured portfolio demo identities when `SeedUsers__Password` is configured. Demo identities are confirmed and repaired to exactly their mapped role without deleting unrelated users.
 - Adds three sample tickets only when the ticket table is empty.
 
 It does not run automatically in Production and is not the normal production account-management mechanism. Production and other intentional internal account creation use `HelpDeskLite.UserProvisioning`. The production demo does not seed tickets automatically.
@@ -531,13 +554,13 @@ The endpoint is intentionally lightweight and does not expose database or hostin
 
 HelpDesk Lite deliberately focuses on a small internal workflow. The current scope does not include:
 
-- Public registration or an Admin UI/role.
+- An Admin UI/role or public selection of privileged roles.
 - External customer support or multi-company tenancy.
 - Automatic assignment or complex workflow automation.
 - Advanced SLA, escalation, or reporting.
 - Knowledge Base.
 - AI classification or chatbot features.
-- Email, Slack, Microsoft Teams, or other external integrations.
+- Slack, Microsoft Teams, or other messaging integrations beyond transactional account email.
 - Real-time SignalR updates.
 
 ## Future Improvements

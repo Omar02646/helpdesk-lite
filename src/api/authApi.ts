@@ -1,5 +1,7 @@
 import type { User, UserRole } from '../types/user'
 import { api } from './client'
-type ApiUser={id:string;name:string;email:string;role:'Employee'|'SupportAgent'|'Manager';initials:string}
+export type DemoRole='Employee'|'SupportAgent'|'Manager'
+type ApiUser={id:string;name:string;email:string;role:DemoRole;initials:string;firstName?:string;lastName?:string;isDemo:boolean}
 const map=(user:ApiUser):User=>({...user,role:(user.role==='SupportAgent'?'Support Agent':user.role) as UserRole})
-export const authApi={login:async(email:string,password:string,rememberMe:boolean)=>map(await api<ApiUser>('/api/auth/login',{method:'POST',body:JSON.stringify({email,password,rememberMe})})),me:async()=>map(await api<ApiUser>('/api/auth/me')),logout:()=>api<void>('/api/auth/logout',{method:'POST'})}
+const postMessage=(path:string,body:unknown)=>api<{message:string}>(path,{method:'POST',body:JSON.stringify(body)})
+export const authApi={login:async(email:string,password:string,rememberMe:boolean)=>map(await api<ApiUser>('/api/auth/login',{method:'POST',body:JSON.stringify({email,password,rememberMe})})),demoLogin:async(role:DemoRole)=>map(await api<ApiUser>('/api/auth/demo-login',{method:'POST',body:JSON.stringify({role})})),register:(request:{firstName:string;lastName:string;email:string;password:string;confirmPassword:string})=>postMessage('/api/auth/register',request),confirmEmail:(userId:string,token:string)=>postMessage('/api/auth/confirm-email',{userId,token}),resendConfirmation:(email:string)=>postMessage('/api/auth/resend-confirmation',{email}),forgotPassword:(email:string)=>postMessage('/api/auth/forgot-password',{email}),resetPassword:(userId:string,token:string,newPassword:string,confirmPassword:string)=>postMessage('/api/auth/reset-password',{userId,token,newPassword,confirmPassword}),me:async()=>map(await api<ApiUser>('/api/auth/me')),logout:()=>api<void>('/api/auth/logout',{method:'POST'})}

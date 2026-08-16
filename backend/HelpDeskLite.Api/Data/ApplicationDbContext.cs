@@ -10,6 +10,8 @@ public sealed class ApplicationDbContext(DbContextOptions<ApplicationDbContext> 
     protected override void OnModelCreating(ModelBuilder builder) {
         base.OnModelCreating(builder);
         builder.Entity<ApplicationUser>().Property(x=>x.DisplayName).HasMaxLength(160);
+        builder.Entity<ApplicationUser>().Property(x=>x.FirstName).HasMaxLength(50);
+        builder.Entity<ApplicationUser>().Property(x=>x.LastName).HasMaxLength(50);
         builder.Entity<Ticket>(entity => {
             entity.Property(x=>x.TicketNumber).HasMaxLength(30); entity.HasIndex(x=>x.TicketNumber).IsUnique();
             entity.Property(x=>x.Title).HasMaxLength(200); entity.Property(x=>x.Description).HasMaxLength(5000); entity.Property(x=>x.Category).HasMaxLength(80);

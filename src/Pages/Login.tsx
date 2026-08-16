@@ -1,6 +1,6 @@
 import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react'
 import { useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { homeForRole } from '../components/layout/RoleRoute'
 import { Button } from '../components/ui/Button'
 import { useSession } from '../context/SessionContext'
@@ -46,7 +46,8 @@ export default function Login() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const navigate = useNavigate()
-  const { login } = useSession()
+  const { login, demoLogin } = useSession()
+  const [demoSubmitting, setDemoSubmitting] = useState('')
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -84,8 +85,10 @@ export default function Login() {
               <input id="login-password" type={showPassword?'text':'password'} required value={password} onChange={event=>setPassword(event.target.value)} placeholder="Enter your password" autoComplete="current-password"/>
               <button type="button" onClick={()=>setShowPassword(!showPassword)} aria-label={showPassword?'Hide password':'Show password'}>{showPassword?<EyeOff size={19}/>:<Eye size={19}/>}</button>
             </div>
-            <label className="check" htmlFor="remember-me"><input id="remember-me" type="checkbox" checked={remember} onChange={event=>setRemember(event.target.checked)}/><span>Remember me</span></label>
+            <div className="login-options"><label className="check" htmlFor="remember-me"><input id="remember-me" type="checkbox" checked={remember} onChange={event=>setRemember(event.target.checked)}/><span>Remember me</span></label><Link to="/forgot-password">Forgot password?</Link></div>
             <Button type="submit" disabled={submitting}>{submitting?'Signing in…':'Sign In'}</Button>
+            <p className="auth-link">Don't have an account? <Link to="/register">Create Account</Link></p>
+            <section className="quick-demo"><h2>Quick Demo Access</h2><p>Explore privileged HelpDesk Lite roles.</p>{([['SupportAgent','Manage, assign, update, and resolve tickets.'],['Manager','View operational ticket activity.']] as const).map(([role,description])=><button type="button" key={role} disabled={!!demoSubmitting} onClick={async()=>{setError('');setDemoSubmitting(role);try{const user=await demoLogin(role);navigate(homeForRole(user.role))}catch(reason){setError(reason instanceof Error?reason.message:'Unable to start demo.')}finally{setDemoSubmitting('')}}}><span><strong>{role==='SupportAgent'?'Support Agent':role}</strong><small>{description}</small></span><b>{demoSubmitting===role?'Opening…':'Try'}</b></button>)}</section>
           </div>
         </form>
       </section>

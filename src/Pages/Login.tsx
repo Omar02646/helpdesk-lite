@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { homeForRole } from '../components/layout/RoleRoute'
 import { Button } from '../components/ui/Button'
+import { ThemeToggle } from '../components/ui/ThemeToggle'
 import { useSession } from '../context/SessionContext'
 
 function SupportIllustration() {
@@ -66,6 +67,7 @@ export default function Login() {
   return <main className="login-page">
     <div className="login-shell">
       <section className="login-form-side">
+        <ThemeToggle className="login-theme-toggle"/>
         <form className="login-card" onSubmit={submit}>
           <header className="login-heading">
             <h1>HelpDesk <span>Lite</span></h1>
